@@ -13,7 +13,9 @@
     "@chakra-ui/react": "^3.21.1",
     "@emotion/react": "^11.14.0",
     "@vitejs/plugin-react": "^4.6.0",
+    "chart.js": "^4.5.0",
     "next-themes": "^0.4.6",
+    "ol": "^10.6.1",
     "provider": "link:@/components/ui/provider",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -21,6 +23,7 @@
     "vite": "^7.0.0"
   },
   "devDependencies": {
+    "@types/chart.js": "^4.0.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^18.3.7",
     "vite-tsconfig-paths": "^5.1.4"
