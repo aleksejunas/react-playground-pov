@@ -1,0 +1,205 @@
+// React + OpenLayers + Chart.js eksempel (for Phase Out Village)
+
+import React, { useEffect, useRef, useState } from "react";
+import Map from "ol/Map";
+import View from "ol/View";
+import { fromLonLat } from "ol/proj";
+import TileLayer from "ol/layer/Tile";
+import OSM from "ol/source/OSM";
+import XYZ from "ol/source/XYZ";
+import VectorLayer from "ol/layer/Vector";
+import VectorSource from "ol/source/Vector";
+import Feature from "ol/Feature";
+import Point from "ol/geom/Point";
+import Icon from "ol/style/Icon";
+import Style from "ol/style/Style";
+import { Fill, Stroke, Text } from "ol/style";
+import "ol/ol.css";
+import {
+  Chart,
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
+  Title,
+  CategoryScale,
+} from "chart.js";
+
+Chart.register(
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
+  Title,
+  CategoryScale,
+);
+
+const fields = [
+  {
+    name: "Skarv",
+    lon: 7.5,
+    lat: 65.5,
+    emissions: [10, 9, 8, 6, 5],
+    intensity: 5,
+  },
+  {
+    name: "Troll",
+    lon: 4.0,
+    lat: 61.0,
+    emissions: [20, 18, 16, 12, 9],
+    intensity: 9,
+  },
+  {
+    name: "Åsgard",
+    lon: 7.0,
+    lat: 64.0,
+    emissions: [15, 13, 11, 8, 5],
+    intensity: 7,
+  },
+];
+
+const getColorForIntensity = (intensity: number) => {
+  if (intensity > 8) return "red";
+  if (intensity > 5) return "orange";
+  return "green";
+};
+
+type Field = {
+  name: string;
+  lon: number;
+  lat: number;
+  emissions: number[];
+  intensity: number;
+};
+
+const PhaseOutMapScreen = () => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<HTMLCanvasElement>(null);
+  const chartInstanceRef = useRef<Chart | null>(null);
+  const [score, setScore] = useState(100);
+  const [income, setIncome] = useState(300);
+  const [selectedField, setSelectedField] = useState<Field | null>(null);
+
+  useEffect(() => {
+    let map: Map | null = null;
+    const vectorSource = new VectorSource({
+      features: fields.map((field) => {
+        const feature = new Feature({
+          geometry: new Point(fromLonLat([field.lon, field.lat])),
+          name: field.name,
+        });
+        feature.setStyle(
+          new Style({
+            image: new Icon({
+              src: "/icons/oilfield.svg",
+              scale: 0.05,
+              color: getColorForIntensity(field.intensity),
+            }),
+            text: new Text({
+              text: field.name,
+              offsetY: 20,
+              fill: new Fill({ color: "#000" }),
+              stroke: new Stroke({ color: "#fff", width: 2 }),
+            }),
+          }),
+        );
+        feature.setId(field.name);
+        return feature;
+      }),
+    });
+
+    map = new Map({
+      target: mapRef.current as HTMLElement,
+      layers: [
+        new TileLayer({
+          source: new XYZ({
+            url: "https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            attributions: "&copy; OpenStreetMap contributors & Carto",
+            maxZoom: 19,
+          }),
+        }),
+        new VectorLayer({ source: vectorSource }),
+      ],
+      view: new View({
+        center: fromLonLat([10, 65]),
+        zoom: 5,
+      }),
+    });
+
+    map.on("singleclick", function (evt) {
+      map!.forEachFeatureAtPixel(evt.pixel, function (feature) {
+        const field = fields.find((f) => f.name === feature.getId());
+        setSelectedField(field ?? null);
+        setScore((prev) => prev + 10);
+        setIncome((prev) => prev + 20);
+      });
+    });
+
+    if (chartRef.current) {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+      }
+      const ctx = chartRef.current.getContext("2d");
+      if (ctx) {
+        chartInstanceRef.current = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: ["2027", "2029", "2031", "2033", "2040"],
+            datasets: fields.map((field) => ({
+              label: field.name,
+              data: field.emissions,
+              borderWidth: 2,
+            })),
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: "Utslipp per felt mot 2040",
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "CO₂-utslipp (mill. tonn)",
+                },
+              },
+            },
+          },
+        });
+      }
+    }
+
+    return () => {
+      if (map) {
+        map.setTarget(undefined);
+      }
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+        chartInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div
+        style={{
+          padding: "0.5rem",
+          background: "#f0f0f0",
+          borderRadius: "8px",
+        }}
+      >
+        🌱 Klimapoeng: {score} | 💰 Inntekt: {income} mrd | 🛢️ Felt valgt:{" "}
+        {selectedField?.name || "Ingen"}
+      </div>
+      <div ref={mapRef} style={{ height: "300px", width: "100%" }}></div>
+      <canvas ref={chartRef} height="200"></canvas>
+    </div>
+  );
+};
+
+export default PhaseOutMapScreen;
