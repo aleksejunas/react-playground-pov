@@ -1,3 +1,6 @@
+// FIX: Dark mode for the whole game, not just the modal
+// FIX: Persistence lost
+
 import React, { useEffect, useRef, useState } from "react";
 import Map from "ol/Map";
 import View from "ol/View";
@@ -26,63 +29,97 @@ type Field = {
   phaseOutCost: number;
 };
 
-const fields: Field[] = [
-  {
-    name: "Skarv",
-    lon: 7.5,
-    lat: 65.5,
-    emissions: [10, 9, 8, 6, 5],
-    intensity: 8,
-    status: "active",
-    production: 40,
-    workers: 120,
-    phaseOutCost: 50,
-  },
-  {
-    name: "Troll",
-    lon: 4.0,
-    lat: 61.0,
-    emissions: [20, 18, 16, 12, 9],
-    intensity: 9,
-    status: "active",
-    production: 65,
-    workers: 200,
-    phaseOutCost: 80,
-  },
-  {
-    name: "Åsgard",
-    lon: 7.0,
-    lat: 64.0,
-    emissions: [15, 13, 11, 8, 5],
-    intensity: 7,
-    status: "active",
-    production: 45,
-    workers: 150,
-    phaseOutCost: 60,
-  },
-  {
-    name: "Gullfaks",
-    lon: 2.5,
-    lat: 61.2,
-    emissions: [12, 10, 8, 6, 3],
-    intensity: 6,
-    status: "active",
-    production: 35,
-    workers: 100,
-    phaseOutCost: 45,
-  },
-  {
-    name: "Statfjord",
-    lon: 1.8,
-    lat: 61.8,
-    emissions: [18, 15, 12, 8, 4],
-    intensity: 8,
-    status: "active",
-    production: 55,
-    workers: 180,
-    phaseOutCost: 70,
-  },
-];
+const LOCAL_STORAGE_KEY = "phaseOutGameState";
+
+type GameState = {
+  gameFields: Field[];
+  budget: number;
+  score: number;
+  year: number;
+};
+
+const loadGameState = (): GameState => {
+  try {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (
+        parsed &&
+        Array.isArray(parsed.gameFields) &&
+        typeof parsed.budget === "number" &&
+        typeof parsed.score === "number" &&
+        typeof parsed.score === "number"
+      ) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore parsing error
+  }
+
+  return {
+    gameFields: [
+      {
+        name: "Skarv",
+        lon: 7.5,
+        lat: 65.5,
+        emissions: [10, 9, 8, 6, 5],
+        intensity: 8,
+        status: "active",
+        production: 40,
+        workers: 120,
+        phaseOutCost: 50,
+      },
+      {
+        name: "Troll",
+        lon: 4.0,
+        lat: 61.0,
+        emissions: [20, 18, 16, 12, 9],
+        intensity: 9,
+        status: "active",
+        production: 65,
+        workers: 200,
+        phaseOutCost: 80,
+      },
+      {
+        name: "Åsgard",
+        lon: 7.0,
+        lat: 64.0,
+        emissions: [15, 13, 11, 8, 5],
+        intensity: 7,
+        status: "active",
+        production: 45,
+        workers: 150,
+        phaseOutCost: 60,
+      },
+      {
+        name: "Gullfaks",
+        lon: 2.5,
+        lat: 61.2,
+        emissions: [12, 10, 8, 6, 3],
+        intensity: 6,
+        status: "active",
+        production: 35,
+        workers: 100,
+        phaseOutCost: 45,
+      },
+      {
+        name: "Statfjord",
+        lon: 1.8,
+        lat: 61.8,
+        emissions: [18, 15, 12, 8, 4],
+        intensity: 8,
+        status: "active",
+        production: 55,
+        workers: 180,
+        phaseOutCost: 70,
+      },
+    ],
+    budget: 250,
+    score: 100,
+    year: 2025,
+  };
+};
 
 const getColorForIntensity = (
   intensity: number,
@@ -96,12 +133,17 @@ const getColorForIntensity = (
 };
 
 const PhaseOutVillageGame = () => {
+  const [fields, setFields] = useState<Field[]>(
+    loadGameState().gameFields ?? [],
+  );
   const mapRef = useRef(null);
   const mapInstanceRef = useRef<Map | null>(null);
-  const [score, setScore] = useState(100);
-  const [budget, setBudget] = useState(200);
-  const [year, setYear] = useState(2025);
-  const [gameFields, setGameFields] = useState<Field[]>(fields);
+  const [score, setScore] = useState(() => loadGameState().score);
+  const [budget, setBudget] = useState(() => loadGameState().budget);
+  const [year, setYear] = useState(() => loadGameState().year);
+  const [gameFields, setGameFields] = useState<Field[]>(
+    () => loadGameState().gameFields,
+  );
   const [selectedField, setSelectedField] = useState<Field | null>(null);
   const [showFieldModal, setShowFieldModal] = useState(false);
   const [totalEmissions, setTotalEmissions] = useState(0);
@@ -109,6 +151,17 @@ const PhaseOutVillageGame = () => {
   const [achievements, setAchievements] = useState<string[]>([]);
 
   useEffect(() => {
+    const stateToSave: GameState = {
+      gameFields,
+      budget,
+      score,
+      year,
+    };
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
+  }, [gameFields, budget, score, year]);
+
+  useEffect(() => {
+    if (!Array.isArray(gameFields)) return;
     const emissions = gameFields.reduce(
       (sum, field) =>
         field.status === "active" ? sum + field.emissions[0] : sum,
@@ -124,7 +177,7 @@ const PhaseOutVillageGame = () => {
   }, [gameFields]);
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !gameFields) return;
     const vectorSource = new VectorSource({
       features: gameFields.map((field) => {
         const feature = new Feature({
@@ -203,17 +256,28 @@ const PhaseOutVillageGame = () => {
     }
     setShowFieldModal(false);
     setSelectedField(null);
+    setYear((prev) => prev + 1); // Advance year automatically after phase out
   };
 
-  const progressToTarget = Math.min(
-    100,
-    ((fields.length - gameFields.filter((f) => f.status === "active").length) /
-      fields.length) *
-      100,
-  );
+  const progressToTarget =
+    fields && fields.length > 0
+      ? Math.min(
+          100,
+          ((fields.length -
+            gameFields.filter((f) => f.status === "active").length) /
+            fields.length) *
+            100,
+        )
+      : 0;
 
   return (
-    <div className="container">
+    <div
+      className="container"
+      style={{
+        filter: `grayscale($(Math.min(1, (year - 2025) / 10)})`,
+        transition: "filter 0.5s",
+      }}
+    >
       {/* JSX fortsetter med className-er fra CSS-fila */}
       {/* Header */}
       <div className="header">
@@ -317,6 +381,33 @@ const PhaseOutVillageGame = () => {
           </div>
         </div>
       )}
+
+      {/* Example Controls */}
+      {/* <div className="example-controls"> */}
+      {/*   <button */}
+      {/*     onClick={() => */}
+      {/*       setFields((prev) => [ */}
+      {/*         ...prev, */}
+      {/*         { */}
+      {/*           name: `NewField${prev.length + 1}`, */}
+      {/*           lon: 5.0, */}
+      {/*           lat: 62.0, */}
+      {/*           emissions: [5, 4, 3, 2, 1], */}
+      {/*           intensity: 5, */}
+      {/*           status: "active", */}
+      {/*           production: 10, */}
+      {/*           workers: 50, */}
+      {/*           phaseOutCost: 20, */}
+      {/*         }, */}
+      {/*       ]) */}
+      {/*     } */}
+      {/*   > */}
+      {/*     Add Field */}
+      {/*   </button> */}
+      {/*   <button onClick={() => setYear((prev) => prev + 1)}> */}
+      {/*     Advance Year */}
+      {/*   </button> */}
+      {/* </div> */}
 
       {/* Field Modal */}
       {showFieldModal && selectedField && (
