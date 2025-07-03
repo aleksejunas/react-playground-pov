@@ -42,19 +42,35 @@ const loadGameState = (): GameState => {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
+      // Defensive: Only parse if string is not too large and is valid JSON
+      if (saved.length > 10000) throw new Error("Saved state too large");
       const parsed = JSON.parse(saved);
+      // Validate structure and types to prevent prototype pollution or tampering
       if (
         parsed &&
         Array.isArray(parsed.gameFields) &&
         typeof parsed.budget === "number" &&
         typeof parsed.score === "number" &&
-        typeof parsed.score === "number"
+        typeof parsed.year === "number" &&
+        parsed.gameFields.every(
+          (f: any) =>
+            typeof f.name === "string" &&
+            typeof f.lon === "number" &&
+            typeof f.lat === "number" &&
+            Array.isArray(f.emissions) &&
+            f.emissions.every((e: any) => typeof e === "number") &&
+            typeof f.intensity === "number" &&
+            ["active", "closed", "transitioning"].includes(f.status) &&
+            typeof f.production === "number" &&
+            typeof f.workers === "number" &&
+            typeof f.phaseOutCost === "number",
+        )
       ) {
         return parsed;
       }
     }
   } catch {
-    // Ignore parsing error
+    // Ignore parsing error or validation failure
   }
 
   return {
@@ -133,14 +149,15 @@ const getColorForIntensity = (
 };
 
 const PhaseOutVillageGame = () => {
+  const initialState = loadGameState();
   const [fields, setFields] = useState<Field[]>(
     loadGameState().gameFields ?? [],
   );
   const mapRef = useRef(null);
   const mapInstanceRef = useRef<Map | null>(null);
-  const [score, setScore] = useState(() => loadGameState().score);
-  const [budget, setBudget] = useState(() => loadGameState().budget);
-  const [year, setYear] = useState(() => loadGameState().year);
+  const [score, setScore] = useState(initialState.score);
+  const [budget, setBudget] = useState(initialState.budget);
+  const [year, setYear] = useState(initialState.year);
   const [gameFields, setGameFields] = useState<Field[]>(
     () => loadGameState().gameFields,
   );
@@ -259,16 +276,17 @@ const PhaseOutVillageGame = () => {
     setYear((prev) => prev + 1); // Advance year automatically after phase out
   };
 
-  const progressToTarget =
-    fields && fields.length > 0
+  const progressToTarget = React.useMemo(() => {
+    return gameFields && gameFields.length > 0
       ? Math.min(
           100,
-          ((fields.length -
+          ((gameFields.length -
             gameFields.filter((f) => f.status === "active").length) /
-            fields.length) *
+            gameFields.length) *
             100,
         )
       : 0;
+  }, [gameFields]);
 
   return (
     <div
