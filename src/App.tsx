@@ -1,13 +1,13 @@
 import React from "react";
 import Demo from "./components/ui/Demo";
-import PhaseOutMap from "./screens/PhaseOutMapScreen/PhaseOutMapScreen";
-import PhaseOutMapScreen from "./screens/PhaseOutMapScreen/PhaseOutMapScreen";
+import PhaseOutMap from "./pages/PhaseOutMapPage/PhaseOutMapPage";
+import PhaseOutMapPage from "./pages/PhaseOutMapPage/PhaseOutMapPage";
 
 const App = () => {
   return (
     <>
       {/* <Demo /> */}
-      <PhaseOutMapScreen />
+      <PhaseOutMapPage />
       {/* <h1>Welcome to App</h1> */}
     </>
   );

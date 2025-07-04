@@ -1,5 +1,6 @@
 // FIX: Dark mode for the whole game, not just the modal
-// FIX: Persistence lost
+// TODO: Refactor more???
+// TODO: Teste ut Gemini kodeforslag
 
 import React, { useEffect, useRef, useState } from "react";
 import Map from "ol/Map";
@@ -15,7 +16,7 @@ import Circle from "ol/style/Circle";
 import Style from "ol/style/Style";
 import { Fill, Stroke, Text } from "ol/style";
 import "ol/ol.css";
-import "./PhaseOutMapScreen.css";
+import "./PhaseOutMapPage.css";
 
 type Field = {
   name: string;
@@ -148,11 +149,11 @@ const getColorForIntensity = (
   return "#22C55E";
 };
 
-const PhaseOutVillageGame = () => {
+const PhaseOutMapPage = () => {
   const initialState = loadGameState();
-  const [fields, setFields] = useState<Field[]>(
-    loadGameState().gameFields ?? [],
-  );
+  // const [fields, setFields] = useState<Field[]>(
+  //   loadGameState().gameFields ?? [],
+  // );
   const mapRef = useRef(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const [score, setScore] = useState(initialState.score);
@@ -296,7 +297,6 @@ const PhaseOutVillageGame = () => {
         transition: "filter 0.5s",
       }}
     >
-      {/* JSX fortsetter med className-er fra CSS-fila */}
       {/* Header */}
       <div className="header">
         <div className="header-top">
@@ -400,33 +400,6 @@ const PhaseOutVillageGame = () => {
         </div>
       )}
 
-      {/* Example Controls */}
-      {/* <div className="example-controls"> */}
-      {/*   <button */}
-      {/*     onClick={() => */}
-      {/*       setFields((prev) => [ */}
-      {/*         ...prev, */}
-      {/*         { */}
-      {/*           name: `NewField${prev.length + 1}`, */}
-      {/*           lon: 5.0, */}
-      {/*           lat: 62.0, */}
-      {/*           emissions: [5, 4, 3, 2, 1], */}
-      {/*           intensity: 5, */}
-      {/*           status: "active", */}
-      {/*           production: 10, */}
-      {/*           workers: 50, */}
-      {/*           phaseOutCost: 20, */}
-      {/*         }, */}
-      {/*       ]) */}
-      {/*     } */}
-      {/*   > */}
-      {/*     Add Field */}
-      {/*   </button> */}
-      {/*   <button onClick={() => setYear((prev) => prev + 1)}> */}
-      {/*     Advance Year */}
-      {/*   </button> */}
-      {/* </div> */}
-
       {/* Field Modal */}
       {showFieldModal && selectedField && (
         <div className="modal">
@@ -515,4 +488,4 @@ const PhaseOutVillageGame = () => {
   );
 };
 
-export default PhaseOutVillageGame;
+export default PhaseOutMapPage;
